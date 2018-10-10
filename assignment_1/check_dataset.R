@@ -28,18 +28,28 @@ print("Finished ARIMA")
 Sys.time()
 summary(ARIMAfit)
 
-# # Predict some future values in time series using the trained ARIMA model
-# par(mfrow = c(1,1))
-# pred <- predict(ARIMAfit, n.ahead=36)
-# 
-# # Plot actual time series, prediction and their 2*sigma confidence interval bounds
-# plot(data, type='l', xlim=c(2004,2018), ylim=c(1,1600), xlab='Year', ylab='Tractor Sales')
+
+test_data <- read.csv('data/test.csv')
+store_aggregated_test = aggregate(sales ~ date + item, test_data, sum)
+item_1_test = store_aggregated_test[store_aggregated_test$item == 1, ]
+item_1_test_ts <- ts(item_1_test[,3], start=c(2018,1,1), frequency=365)
+
+# Predict some future values in time series using the trained ARIMA model
+par(mfrow = c(1,1))
+pred <- predict(ARIMAfit, n.ahead=300)
+
+# Plot actual time series, prediction and their 2*sigma confidence interval bounds
+plot(item_1_ts, type='l', xlim=c(2015, 2019), xlab='Year', ylab='Item 1 Sales')
+lines(pred$pred, col='blue')
+lines(pred$pred+2*pred$se, col='orange')
+lines(pred$pred-2*pred$se, col='orange')
+
 # lines(10^(pred$pred),col='blue')
 # lines(10^(pred$pred+2*pred$se),col='orange')
 # lines(10^(pred$pred-2*pred$se),col='orange')
 # 
-# # Check the ACF and PACF plots of the residuals of our best fit ARIMA model
-# # Verify that only random noise is remaining (no significant parts)
-# par(mfrow=c(1,2))
-# acf(ts(ARIMAfit$residuals),main='ACF Residual')
-# pacf(ts(ARIMAfit$residuals),main='PACF Residual')
+# Check the ACF and PACF plots of the residuals of our best fit ARIMA model
+# Verify that only random noise is remaining (no significant parts)
+par(mfrow=c(1,2))
+acf(ts(ARIMAfit$residuals), main='ACF Residual')
+pacf(ts(ARIMAfit$residuals), main='PACF Residual')
