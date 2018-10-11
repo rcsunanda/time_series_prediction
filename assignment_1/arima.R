@@ -17,7 +17,7 @@ plot(item_1_train_ts, xlab='Time', ylab='Item 1 Sales', xlim=c(2013,2016))
 ######### ARIMA Checking ##########
 
 # Plot diff to check whether series is stationary (no variance around trend) --> this is not stationary
-plot(diff(item_1_train_ts), ylab='Differenced', xlim=c(2013,2014))
+plot(diff(item_1_train_ts), ylab='Differenced', xlim=c(2013,2015))
 
 # log is not necessary
 # # Plot diff of log to see if log is stationary --> yes it's stationary
@@ -49,12 +49,13 @@ par(mfrow = c(1,1))
 pred <- predict(ARIMAfit, n.ahead=365)
 
 # Plot actual time series, prediction and their 2*sigma confidence interval bounds
-plot(item_1_train_ts, type='l', xlim=c(2013, 2019), xlab='Year', ylab='Item 1 Sales') # Plot training data
+plot(item_1_train_ts, type='l', xlim=c(2016, 2018), xlab='Year', ylab='Item 1 Sales') # Plot training data
 lines(item_1_test_ts, col='red') # Plot actual values of test data
 lines(pred$pred, col='blue')  # Plot predicted values of test data
 lines(pred$pred+2*pred$se, col='orange')  # Plot prediction intervals
 lines(pred$pred-2*pred$se, col='orange')
-
+legend(2015.95, 390, legend=c("Training data", "Actual test data", "ARIMA prediction", "Confidence intervals"),
+       col=c("black", "red", "blue", "orange"), lty=1:2, cex=0.8)
 
 ######### ARIMA Post Analysis ##########
 
