@@ -33,6 +33,23 @@ def scale_series(series, scaler=None):
 
 
 
+def descale_series(series, scaler):
+
+    dataset_size = len(series)
+    data_dim = len(series[0].X)
+
+    X = np.zeros((dataset_size, data_dim))
+
+    for i, point in enumerate(series):
+        X[i] = point.X
+
+    X = scaler.inverse_transform(X)
+
+    for i, point in enumerate(series):
+        point.X = X[i]
+
+
+
 ###################################################################################################
 """
 Generates a time series from given multivariable function
