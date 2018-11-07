@@ -72,13 +72,14 @@ def plot_training_history(history):
 def run_system():
 
     # Training and validation data
-    # dimension, train_series = get_data(2013, "/home/sunanda/Sunanda/PhD Study/Data Analytics/data_analytics_course/assignment_1/data/item1_train.csv")
-    dimension, train_series = get_generated_data(t_range=(-1, 1))
+    dimension, train_series = get_data(2013, "data/item1_train.csv")
+    # dimension, train_series = get_generated_data(t_range=(-1, 1))
     scaler = gen.scale_series(train_series)
     # plot_series(train_series, "Training series")
 
-    dim_val, validation_series = get_generated_data(t_range=(1, 1.5))
-
+    # dim_val, validation_series = get_generated_data(t_range=(1, 1.5))
+    dim_val, validation_series = get_data(2017, "data/item1_validation.csv")
+    gen.scale_series(validation_series)
 
     # LSTM Architecture
     input_layer_units = dimension   # Dimensionality of time series data
@@ -116,39 +117,61 @@ def run_system():
 
     plot_training_history(history)
 
+    # Predict on validation data
+    Y_validation_predicted = model.predict(X_validation)
+
+    validation_t_range = (validation_series[0].t, validation_series[-1].t)
+
+    Y_validation_series = gen.convert_to_series(Y_validation, validation_t_range)
+    Y_validation_predicted_series = gen.convert_to_series(Y_validation_predicted, validation_t_range)
 
 
     # Predict on test data
-    # dim2, test_series = get_data(2017, "/home/sunanda/Sunanda/PhD Study/Data Analytics/data_analytics_course/assignment_1/data/item1_test.csv")
-    dim2, test_series = get_generated_data(t_range=(1.5, 2.5))
+    dim2, test_series = get_data(2017.5, "data/item1_test.csv")
+    # dim2, test_series = get_generated_data(t_range=(1.5, 2.5))
     gen.scale_series(test_series, scaler)
     test_t_range = (test_series[0].t, test_series[-1].t)
     X_test, Y_test = gen.prepare_dataset(test_series, input_timesteps, output_timesteps)
 
-    Y_predicted = model.predict(X_test)
+    Y_test_predicted = model.predict(X_test)
 
-    Y_predicted_series = gen.convert_to_series(Y_predicted, test_t_range)
+    Y_test_predicted_series = gen.convert_to_series(Y_test_predicted, test_t_range)
     Y_test_series = gen.convert_to_series(Y_test, test_t_range)
-    # plot_series("Y_test")
-    plt.figure()
-    plot_series(train_series, "Training_series")
-    plot_series(Y_test_series, "Test_true_series")
-    plot_series(Y_predicted_series, "Test_forecast_series")
-    plt.title("LSTM forecasting of the function exp(x/2) * sin(2 * pi * x)")
 
 
     # # Predict on training data
     # Y_predicted_on_train = model.predict(X_train)
     # train_t_range = (train_series[0].t, train_series[-1].t)
     # Y_predicted_on_train_series = gen.convert_to_series(Y_predicted_on_train, train_t_range)
-    #
+
+    # Plot training data predictions
     # plt.figure()
     # plot_series(train_series, "Y_train_set_true")
     # plot_series(Y_predicted_on_train_series, "Y_predicted_on_train_set")
     # plt.title("Train set prediction")
 
+
+    # Plot validation and test data predictions
+
+    gen.descale_series(train_series, scaler)
+    gen.descale_series(Y_validation_series, scaler)
+    gen.descale_series(Y_validation_predicted_series, scaler)
+    gen.descale_series(Y_test_series, scaler)
+    gen.descale_series(Y_test_predicted_series, scaler)
+    plt.figure()
+
+    # Concat validation and test series
+    validation_test_series = Y_validation_series + Y_test_series
+    validation_test_predicted_series = Y_validation_predicted_series + Y_test_predicted_series
+
+    plot_series(train_series, "Training_series")
+    plot_series(validation_test_series, "Validation+Test_true_series")
+    plot_series(validation_test_predicted_series, "Validation+Test_forecast_series")
+    plt.title("LSTM forecasting of the function exp(x/2) * sin(2 * pi * x)")
+
     print(model.summary())
     plot_model(model, to_file='model_plot.png', show_layer_names=True)
+    print("Model diagram was written to: model_plot.png")
 
     plt.show()
 
