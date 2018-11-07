@@ -14,5 +14,5 @@ lines(knn_pred$prediction, col='orange')
 lines(ltsm_predictions_ts, col='green')
 
 
-legend(2016.95, 385, legend=c("Actual test data", "ARIMA prediction", "Confidence intervals"),
+legend(2016.98, 385, legend=c("Actual test data", "ARIMA prediction", "KNN prediction", "LTSM prediction"),
        col=c("red", "blue", "orange", "green"), lty=1:2, cex=0.8)
