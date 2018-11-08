@@ -5,6 +5,7 @@ import data_synthesizer
 import matplotlib.pyplot as plt
 import csv
 import numpy as np
+import math
 
 from keras.models import Sequential
 from keras.layers import Dense
@@ -82,18 +83,20 @@ def run_system():
     gen.scale_series(validation_series)
 
     # LSTM Architecture
-    input_layer_units = dimension   # Dimensionality of time series data
-    hidden_layer_1_units = 50
-    hidden_layer_2_units = 20
-    hidden_layer_3_units = 2
-    output_layer_units = input_layer_units  # We want to simultaneously predict all dimensions of time-series data
 
-    input_timesteps = 3
-    output_timesteps = 1    # This must be 1, because for now we only have the capability to predict one-step ahead
+    input_timesteps = 80
+    output_timesteps = 5  # This must be 1, because for now we only have the capability to predict one-step ahead
+
+    input_layer_units = dimension   # Dimensionality of time series data
+    hidden_layer_1_units = 100
+    hidden_layer_2_units = 20
+    hidden_layer_3_units = 10
+    output_layer_units = input_layer_units * output_timesteps  # We want to simultaneously predict all dimensions of time-series data (!! No we may not want that! we may just want to predict the required time-series value, such as sales/ stock price !!!)
+
 
     # Training params
-    batch_size = 21 # Mini batch size in GD/ other algorithm
-    epcohs = 10 # 50 is good
+    batch_size = 25 # Mini batch size in GD/ other algorithm
+    epcohs = 500 # 50 is good
 
 
     # Create network
@@ -118,12 +121,14 @@ def run_system():
     plot_training_history(history)
 
     # Predict on validation data
-    Y_validation_predicted = model.predict(X_validation)
+    # Y_validation_predicted = model.predict(X_validation)
+    Y_validation_predicted = gen.moving_forward_window_predict(model, X_train[-100:], input_timesteps, output_timesteps,
+                                                               math.floor(len(X_validation)/output_timesteps))
 
     validation_t_range = (validation_series[0].t, validation_series[-1].t)
 
     Y_validation_series = gen.convert_to_series(Y_validation, validation_t_range)
-    Y_validation_predicted_series = gen.convert_to_series(Y_validation_predicted, validation_t_range)
+    Y_validation_predicted_series = gen.new_convert_to_series(Y_validation_predicted, validation_t_range)
 
 
     # Predict on test data
@@ -133,10 +138,18 @@ def run_system():
     test_t_range = (test_series[0].t, test_series[-1].t)
     X_test, Y_test = gen.prepare_dataset(test_series, input_timesteps, output_timesteps)
 
-    Y_test_predicted = model.predict(X_test)
+    # Y_test_predicted = model.predict(X_test)
+    Y_test_predicted = gen.moving_forward_window_predict(model, X_validation[-100:], input_timesteps, output_timesteps,
+                                                               math.floor(len(X_test) / output_timesteps))
 
-    Y_test_predicted_series = gen.convert_to_series(Y_test_predicted, test_t_range)
+    Y_test_predicted_series = gen.new_convert_to_series(Y_test_predicted, test_t_range)
     Y_test_series = gen.convert_to_series(Y_test, test_t_range)
+
+    val_rmse, val_mae, val_mape = gen.calculate_errors(validation_series, Y_validation_predicted_series)
+    test_rmse, test_mae, test_mape = gen.calculate_errors(test_series, Y_test_predicted_series)
+
+    print("Validation errors: RMSE={}, MAE={}, MAPE={}".format(val_rmse, val_mae, val_mape))
+    print("Test errors: RMSE={}, MAE={}, MAPE={}".format(test_rmse, test_mae, test_mape))
 
 
     # # Predict on training data
@@ -167,7 +180,8 @@ def run_system():
     plot_series(train_series, "Training_series")
     plot_series(validation_test_series, "Validation+Test_true_series")
     plot_series(validation_test_predicted_series, "Validation+Test_forecast_series")
-    plt.title("LSTM forecasting of the function exp(x/2) * sin(2 * pi * x)")
+    # plt.title("LSTM forecasting of the function exp(x/2) * sin(2 * pi * x)")
+    plt.title("LSTM forecasting of daily sales values")
 
     print(model.summary())
     plot_model(model, to_file='model_plot.png', show_layer_names=True)
