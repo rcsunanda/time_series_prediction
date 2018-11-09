@@ -125,11 +125,12 @@ def prepare_dataset(series_points, input_timesteps, predict_dimensions, output_t
     return (X, Y)
 
 
-def snowballing_predict(model, initial_ts_sample_set, input_timesteps, output_timesteps, num_predictions):
+def snowballing_predict(model, initial_ts_sample_set, X_to_pred, input_timesteps, output_timesteps):
     """
         Make predictions using given LSTM model by accumulating its own predictions, and using those to predict on next value etc
         initial_ts_sample_set = sample to use as the starting point for predictions (usually the last known sample of the time-series)
                             [this must be an np.ndarray with shape (num_samples, input_timesteps, dimension)]
+        X_to_pred = a series of datapoints which contains the X features (engineered features) for to-be-predicted points
         input_timesteps = no. of input time steps used when training the LSTM model (input layer size)
         output_timesteps = no. of output time steps used when training the LSTM model (output layer size)
         return:
@@ -139,12 +140,39 @@ def snowballing_predict(model, initial_ts_sample_set, input_timesteps, output_ti
 
     num_samples = initial_ts_sample_set.shape[0]
     data_dimension = initial_ts_sample_set.shape[2]
+    num_predictions = len(X_to_pred)
 
     assert output_timesteps == 1
     assert initial_ts_sample_set.shape[1] == input_timesteps
-    # assert data_dimension == 1  # Currently we only support this (otherwise need a lot of adjustments to prepare current-sample inside the loop)
 
+    current_input_set = initial_ts_sample_set   # This variable holds the input to be fed to model.predict(). It gets appended in each iteration of the for loop
 
+    all_predictions = np.zeros(num_predictions)
+
+    for i in range(num_predictions):
+        predicted_set = model.predict(current_input_set, batch_size=prediction_batch_size)
+        assert num_samples == predicted_set.shape[0]    # just to verify
+
+        last_prediction = predicted_set[-1]
+        all_predictions[i] = last_prediction
+
+        new_datapoint = np.zeros(data_dimension)
+        new_datapoint[:] = X_to_pred[i].X[:]
+        new_datapoint[0] = last_prediction
+        new_datapoint = new_datapoint.reshape([1, data_dimension])  # To make it possible to concat with the new_sample below
+
+        new_sample = np.copy(current_input_set[-1]) # creating a new_sample based on the last one in the current set
+        assert new_sample.shape[0] == input_timesteps
+        assert new_sample.shape[1] == data_dimension
+        new_sample = np.delete(new_sample, [0], axis=0)  # remove first element
+
+        new_sample = np.concatenate((new_sample, new_datapoint), axis=0)
+        new_sample = new_sample.reshape([1, input_timesteps, data_dimension])
+        current_input_set = np.concatenate((current_input_set, new_sample), axis=0)
+
+        num_samples += 1
+
+    return all_predictions
 
 
 
@@ -197,7 +225,7 @@ def new_convert_to_series(input_series, t_range):
     for idx in range(dataset_size):
         sample_X = [input_series[idx]]
         t = t_vals[idx]
-        output_series.append(data_point.DataPoint(t, sample_X, -1, -1))
+        output_series.append(data_point.DataPoint(t, '0000-00-00', sample_X, -1, -1))
 
     return output_series
 

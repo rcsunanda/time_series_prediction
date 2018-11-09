@@ -88,7 +88,7 @@ def run_system():
 
     # LSTM Architecture
 
-    input_timesteps = 80
+    input_timesteps = 5
     output_timesteps = 1  # This must be 1, because for now we only have the capability to predict one-step ahead
     predict_dimensions = [0]    # Which dimensions in the input series to predict. There must be only one dimension for now
     num_predict_dimensions = len(predict_dimensions)
@@ -105,7 +105,7 @@ def run_system():
 
     # Training params
     batch_size = 25 # Mini batch size in GD/ other algorithm
-    epcohs = 2 # 50 is good
+    epcohs = 20 # 50 is good
 
 
     # Create network
@@ -129,15 +129,22 @@ def run_system():
     X_train, Y_train = gen.prepare_dataset(train_series, input_timesteps, predict_dimensions, output_timesteps)
     X_validation, Y_validation = gen.prepare_dataset(validation_series, input_timesteps, predict_dimensions, output_timesteps)
 
+    print("Training LSTM model")
     history = model.fit(X_train, Y_train, epochs=epcohs, batch_size=batch_size, verbose=2
                         , validation_data=(X_validation, Y_validation))
+    print("Training LSTM model complete")
 
     plot_training_history(history)
 
+
     # Predict on validation data
     # Y_validation_predicted = model.predict(X_validation)
-    Y_validation_predicted = gen.moving_forward_window_predict(model, X_train[-100:], input_timesteps, output_timesteps,
-                                                               math.floor(len(X_validation)/output_timesteps))
+    # Y_validation_predicted = gen.moving_forward_window_predict(model, X_train[-100:], input_timesteps, output_timesteps,
+    #                                                            math.floor(len(X_validation)/output_timesteps))
+
+    print("Predicting on validation data")
+    Y_validation_predicted = gen.snowballing_predict(model, X_train[-100:], validation_series, input_timesteps, output_timesteps)
+
 
     validation_t_range = (validation_series[0].t, validation_series[-1].t)
 
@@ -154,8 +161,10 @@ def run_system():
     X_test, Y_test = gen.prepare_dataset(test_series, input_timesteps, predict_dimensions, output_timesteps)
 
     # Y_test_predicted = model.predict(X_test)
-    Y_test_predicted = gen.moving_forward_window_predict(model, X_validation[-100:], input_timesteps, output_timesteps,
-                                                               math.floor(len(X_test) / output_timesteps))
+    # Y_test_predicted = gen.moving_forward_window_predict(model, X_validation[-100:], input_timesteps, output_timesteps,
+    #                                                            math.floor(len(X_test) / output_timesteps))
+    print("Predicting on test data")
+    Y_test_predicted = gen.snowballing_predict(model, X_validation[-100:], test_series, input_timesteps, output_timesteps)
 
     Y_test_predicted_series = gen.new_convert_to_series(Y_test_predicted, test_t_range)
     Y_test_series = gen.new_convert_to_series(Y_test, test_t_range)
