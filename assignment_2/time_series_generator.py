@@ -8,6 +8,8 @@ import scipy.stats as st
 import numpy as np
 import math
 from sklearn.preprocessing import MinMaxScaler
+from datetime import datetime
+from keras.utils import to_categorical
 
 
 def scale_series(series, scaler=None):
@@ -48,6 +50,45 @@ def descale_series(series, scaler):
         point.X = X[i]
 
 
+def engineer_features_from_time(series_points):
+    num_points = len(series_points)
+    months = np.zeros(num_points)
+
+    for i, point in enumerate( series_points):
+        # Parse timestamp and compute necessary values
+        date_obj = datetime.strptime(point.timestamp, '%Y-%m-%d')
+        month = date_obj.month - 1  # 0 - 11
+        quarter = (month) // 3  # 0 - 3
+        day_of_week = date_obj.weekday()    # 0 - 6
+        day_of_month = date_obj.day # 1- 31
+
+        is_weekend = 0
+        if day_of_week == 5 or day_of_week == 6:
+            is_weekend = 1
+
+        month_encoded = to_categorical(month, num_classes=12)
+        quarter_encoded = to_categorical(quarter, num_classes=4)
+        day_of_week_encoded = to_categorical(quarter, num_classes=6)
+
+        new_feature_vec = np.copy(point.X)
+        new_feature_vec = np.concatenate((new_feature_vec, month_encoded))
+        new_feature_vec = np.concatenate((new_feature_vec, quarter_encoded))
+        new_feature_vec = np.concatenate((new_feature_vec, day_of_week_encoded))
+        new_feature_vec = np.concatenate((new_feature_vec, [is_weekend]))
+        new_feature_vec = np.concatenate((new_feature_vec, [day_of_month]))
+
+        dimension = len(new_feature_vec)
+
+        point.X = new_feature_vec
+
+        # print('{} - month={}, quarter={}, day_of_month={}, day_of_week={}, is_weekend={}'.
+        #       format(date_obj, month, quarter, day_of_month, day_of_week, is_weekend))
+
+        # print('month_encoded={}'.format(month_encoded))
+        # print(new_feature_vec)
+
+    return dimension
+
 
 ###################################################################################################
 def prepare_dataset(series_points, input_timesteps, predict_dimensions, output_timesteps):
@@ -84,6 +125,29 @@ def prepare_dataset(series_points, input_timesteps, predict_dimensions, output_t
     return (X, Y)
 
 
+def snowballing_predict(model, initial_ts_sample_set, input_timesteps, output_timesteps, num_predictions):
+    """
+        Make predictions using given LSTM model by accumulating its own predictions, and using those to predict on next value etc
+        initial_ts_sample_set = sample to use as the starting point for predictions (usually the last known sample of the time-series)
+                            [this must be an np.ndarray with shape (num_samples, input_timesteps, dimension)]
+        input_timesteps = no. of input time steps used when training the LSTM model (input layer size)
+        output_timesteps = no. of output time steps used when training the LSTM model (output layer size)
+        return:
+    """
+
+    prediction_batch_size = 365    # Size of batch before LSTM state is reset (larger, the better, but may consume memory)
+
+    num_samples = initial_ts_sample_set.shape[0]
+    data_dimension = initial_ts_sample_set.shape[2]
+
+    assert output_timesteps == 1
+    assert initial_ts_sample_set.shape[1] == input_timesteps
+    # assert data_dimension == 1  # Currently we only support this (otherwise need a lot of adjustments to prepare current-sample inside the loop)
+
+
+
+
+
 def moving_forward_window_predict(model, first_ts_sample_set, input_timesteps, output_timesteps, num_predictions):
     """
     Make predictions using given LSTM model based on a window that moves forwards on its own predictions
@@ -96,6 +160,7 @@ def moving_forward_window_predict(model, first_ts_sample_set, input_timesteps, o
     num_samples = first_ts_sample_set.shape[0]
     data_dimension = first_ts_sample_set.shape[2]
 
+    assert output_timesteps == 1
     assert first_ts_sample_set.shape[1] == input_timesteps
     assert data_dimension == 1  # Currently we only support this (otherwise need a lot of adjustments to prepare current-sample inside the loop)
 
@@ -103,7 +168,7 @@ def moving_forward_window_predict(model, first_ts_sample_set, input_timesteps, o
     all_predictions = np.zeros((num_predictions * output_timesteps))
 
     for i in range (num_predictions):
-        predicted_sample = model.predict(current_sample_set_for_prediction)
+        predicted_sample = model.predict(current_sample_set_for_prediction, batch_size=300)
         predicted_sample = predicted_sample[-1, :]  # we only need the last output_steps
         f1 = current_sample_set_for_prediction.flatten()
         f2 = predicted_sample.flatten()

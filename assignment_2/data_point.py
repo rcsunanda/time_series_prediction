@@ -9,9 +9,10 @@ Holds (X, true_is_anomaly, predicted_is_anomaly) for each sample or data point (
 """
 
 class DataPoint:
-    def __init__(self, t, X, true_is_anomaly, predicted_is_anomaly):
+    def __init__(self, t, timestamp, X, true_is_anomaly, predicted_is_anomaly):
         self.t = t  # Time index
-        self.X = X
+        self.timestamp = timestamp # For feature engineering
+        self.X = X  # This is usually an np.ndarray (1-D)
         self.true_is_anomaly = true_is_anomaly
         self.predicted_is_anomaly = predicted_is_anomaly
 

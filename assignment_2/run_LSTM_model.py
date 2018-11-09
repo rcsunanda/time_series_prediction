@@ -17,12 +17,13 @@ def load_series_from_file(start_timestamp, filename):
     with open(filename, newline='') as file:
         reader = csv.reader(file)
         series = []
-        timestamp = start_timestamp    # Start here
+        time_index = start_timestamp    # Start here
         for i, row in enumerate(reader):
             if i > 0:   # Ignore first row with column names
-                sample_X = np.array(row[1:])    # Ignore timestamp
-                series.append(dp.DataPoint(timestamp, sample_X, False, False))
-                timestamp = timestamp + 1/365
+                timestamp = row[0]
+                sample_X = np.array(row[1:])    # Without the timestamp
+                series.append(dp.DataPoint(time_index, timestamp, sample_X, False, False))
+                time_index = time_index + 1/365
 
     return series
 
@@ -77,11 +78,13 @@ def run_system():
     dimension, train_series = get_data(2013, "data/item1_train.csv")
     # dimension, train_series = get_generated_data(t_range=(-1, 1))
     scaler = gen.scale_series(train_series)
+    dimension = gen.engineer_features_from_time(train_series)
     # plot_series(train_series, "Training series")
 
     # dim_val, validation_series = get_generated_data(t_range=(1, 1.5))
     dim_val, validation_series = get_data(2017, "data/item1_validation.csv")
     gen.scale_series(validation_series)
+    gen.engineer_features_from_time(validation_series)
 
     # LSTM Architecture
 
@@ -97,12 +100,12 @@ def run_system():
     hidden_layer_1_units = 100
     hidden_layer_2_units = 20
     hidden_layer_3_units = 10
-    output_layer_units = dimension * output_timesteps  # We want to simultaneously predict all dimensions of time-series data (!! No we may not want that! we may just want to predict the required time-series value, such as sales/ stock price !!!)
+    output_layer_units = num_predict_dimensions * output_timesteps  # We want to simultaneously predict all dimensions of time-series data (!! No we may not want that! we may just want to predict the required time-series value, such as sales/ stock price !!!)
 
 
     # Training params
     batch_size = 25 # Mini batch size in GD/ other algorithm
-    epcohs = 100 # 50 is good
+    epcohs = 2 # 50 is good
 
 
     # Create network
@@ -146,6 +149,7 @@ def run_system():
     dim2, test_series = get_data(2017.5, "data/item1_test.csv")
     # dim2, test_series = get_generated_data(t_range=(1.5, 2.5))
     gen.scale_series(test_series, scaler)
+    gen.engineer_features_from_time(test_series)
     test_t_range = (test_series[0].t, test_series[-1].t)
     X_test, Y_test = gen.prepare_dataset(test_series, input_timesteps, predict_dimensions, output_timesteps)
 
