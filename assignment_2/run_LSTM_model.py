@@ -101,7 +101,7 @@ def run_system():
     hidden_layer_2_units = 5
     hidden_layer_3_units = 10
     hidden_layer_4_units = 10
-    output_layer_units = num_predict_dimensions * output_timesteps  # We want to simultaneously predict all dimensions of time-series data (!! No we may not want that! we may just want to predict the required time-series value, such as sales/ stock price !!!)
+    output_layer_units = num_predict_dimensions * output_timesteps
 
 
     # Training params
@@ -152,12 +152,6 @@ def run_system():
 
     plot_training_history(history)
 
-
-    # Predict on validation data
-    # Y_validation_predicted = model.predict(X_validation)
-    # Y_validation_predicted = gen.moving_forward_window_predict(model, X_train[-100:], input_timesteps, output_timesteps,
-    #                                                            math.floor(len(X_validation)/output_timesteps))
-
     print("Predicting on validation data")
     Y_validation_predicted = gen.snowballing_predict(model, X_train[-100:], validation_series, input_timesteps, output_timesteps)
 
@@ -176,9 +170,6 @@ def run_system():
     test_t_range = (test_series[0].t, test_series[-1].t)
     X_test, Y_test = gen.prepare_dataset(test_series, input_timesteps, predict_dimensions, output_timesteps)
 
-    # Y_test_predicted = model.predict(X_test)
-    # Y_test_predicted = gen.moving_forward_window_predict(model, X_validation[-100:], input_timesteps, output_timesteps,
-    #                                                            math.floor(len(X_test) / output_timesteps))
     print("Predicting on test data")
     Y_test_predicted = gen.snowballing_predict(model, X_validation[-100:], test_series, input_timesteps, output_timesteps)
 
