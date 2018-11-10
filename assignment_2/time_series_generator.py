@@ -156,10 +156,14 @@ def snowballing_predict(model, initial_ts_sample_set, X_to_pred, input_timesteps
         last_prediction = predicted_set[-1]
         all_predictions[i] = last_prediction
 
+        # print("before - {}".format(X_to_pred[i].X[:]))
+
         new_datapoint = np.zeros(data_dimension)
         new_datapoint[:] = X_to_pred[i].X[:]
         new_datapoint[0] = last_prediction
         new_datapoint = new_datapoint.reshape([1, data_dimension])  # To make it possible to concat with the new_sample below
+
+        # print("after - {}".format(X_to_pred[i].X[:]))
 
         new_sample = np.copy(current_input_set[-1]) # creating a new_sample based on the last one in the current set
         assert new_sample.shape[0] == input_timesteps
@@ -231,7 +235,11 @@ def new_convert_to_series(input_series, t_range):
 
 
 def calculate_errors(actual_series, forecast_series):
-    num_points = min(len(actual_series), len(forecast_series))
+    # print('len(actual_series)={}, len(forecast_series)={}'.format(len(actual_series), len(forecast_series)))
+    # num_points = min(len(actual_series), len(forecast_series))
+
+    assert len(actual_series) == len(forecast_series)
+    num_points = len(actual_series)
 
     squared_error_sum = 0
     absolute_error_sum = 0
